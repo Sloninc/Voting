@@ -1,63 +1,81 @@
-﻿using System;
+﻿using Faker;
+using System.Text;
 namespace Voting
 {
-    enum InputDataText
-    {
-        Blocks,
-        Candidates
-    }
     public class Program
     {
-        static int blocks;
-        static int candidateCount;
-        static void Main()
+        static void Main(string[] args)
         {
-            InputData(InputDataText.Blocks);
-            InputData(InputDataText.Candidates);
+
+            InputDataGenerate();
+
+
             Console.ReadLine();
         }
-        static void InputData(InputDataText inputData)
+       
+        static void InputDataGenerate()
         {
-            var isBlocks = inputData == InputDataText.Blocks ? true : false;
-            var blocksText = "Введите количество тестовых блоков: ";
-            var candodateText = "Введите количество кандидатов от 1 до 20: ";
-            var inputText = inputData== InputDataText.Blocks ? blocksText: candodateText;
-            Console.WriteLine(inputText);
-            Console.CursorTop = 0;
-            while (true)
+            var blocks = RandomNumber.Next(1, 10);
+            Dictionary<int, string>[] blocksCandidates = new Dictionary<int, string>[blocks];
+            int[][,] randomVote = new int[blocks][,];
+            for (int i = 0; i < blocks; i++)
             {
-                Console.CursorLeft = inputText.Length;
-                var q = int.TryParse(Console.ReadLine(), out var inputValue);
-                if (q&&isBlocks&&inputValue>0)
+                var candidatesCountPerBlock = RandomNumber.Next(3, 20);
+                var voteCountPerBlock = RandomNumber.Next(1, 1000);
+                var vote = new int[candidatesCountPerBlock];
+                randomVote[i] = new int[voteCountPerBlock, candidatesCountPerBlock];
+                blocksCandidates[i] = new Dictionary<int, string>(candidatesCountPerBlock);
+                for (int j = 0; j < candidatesCountPerBlock; j++)
                 {
-                    blocks = inputValue;
-                    Console.Clear();
-                    Console.WriteLine($"Вы ввели {blocks} тестовых блоков");
-                    Console.WriteLine("Нажмите любую клавишу для продолжения...");
-                    Console.ReadKey();
-                    Console.Clear();
-                    break;
+                    blocksCandidates[i].Add(j, Name.FullName(NameFormats.Standard));
+                    vote[j] = j;
                 }
-                else if(q && !isBlocks&& inputValue is (<=20 and >0))
+                for(int q = 0; q < voteCountPerBlock; q++)
                 {
-                    candidateCount = inputValue;
-                    Console.Clear();
-                    Console.WriteLine($"Вы ввели {candidateCount} кандидатов");
-                    Console.WriteLine("Нажмите любую клавишу для продолжения...");
-                    Console.ReadKey();
-                    Console.Clear();
-                    break;
-                }
-                else
-                {
-                    Console.Clear();
-                    if(isBlocks)
-                        Console.WriteLine("Количество тестовых блоков должно быть целым положительным числом\n" + inputText);
-                    else Console.WriteLine("Количество кандидатов должно быть целым положительным числом от 1 до 20\n" + inputText);
-                    Console.CursorTop = 1;
-                }
+                    for (int k = vote.Length - 1; k >= 1; k--)
+                    {
+                        int v = RandomNumber.Next(0, k + 1);
+                        int tmp = vote[v];
+                        vote[v] = vote[k];
+                        vote[k] = tmp;
+                    }
+                    for(int z=0; z < vote.Length; z++)
+                    {
+                        randomVote[i][q,z] = vote[z];
+                    } 
+                } 
             }
-            
+            FileInputDataCreate(blocksCandidates, randomVote);
+        }
+        static void FileInputDataCreate(Dictionary<int, string>[] blocksCandidates, int[][,] randomVote)
+        {
+            StringBuilder builder = new StringBuilder();
+            for (int i = 0; i < blocksCandidates.Length; i++)
+            {
+                builder.Append($"{i+1}\n\n");
+                builder.Append($"{blocksCandidates[i].Count}\n");
+                var values = blocksCandidates[i].Values;
+                foreach(var value in values)
+                    builder.Append(value+"\n");                                                          
+                for (int k = 0; k < randomVote[i].GetLength(0); k++)
+                {
+                    for (int j = 0; j < randomVote[i].GetLength(1); j++)
+                    {
+                        builder.Append($"{randomVote[i][k, j]+1} \t");
+                    }
+                    builder.Append("\n");
+                }
+                builder.Append("\n");
+            }
+            string path = Path.Combine("c:", "Spark");
+            DirectoryInfo directoryInfo = new DirectoryInfo(path);
+            directoryInfo.Create();
+            using (FileStream fstream = File.Create(path + "\\TestVote.txt"))
+            {
+                byte[] buffer = Encoding.UTF8.GetBytes(builder.ToString());
+                // запись массива байтов в файл
+                fstream.Write(buffer, 0, buffer.Length);
+            }
         }
     }
 }

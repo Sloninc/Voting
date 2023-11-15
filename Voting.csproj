@@ -14,4 +14,8 @@
     <None Remove="README.md" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Faker.NETCore" Version="1.0.2" />
+  </ItemGroup>
+
 </Project>
