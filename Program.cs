@@ -102,10 +102,15 @@ namespace Voting
             }
         }
         static void Main(string[] args)
-        {
+        { 
             //InputDataGenerate();
             TryParseInputFile(Path.Combine("c:", "Spark") + "\\TestVote.txt", out Dictionary<int, string>[] blocksCandidates, out int[][,] vote);
-            Print(blocksCandidates, vote);
+            //Print(blocksCandidates, vote);
+            var result = CalculateVote(blocksCandidates, vote);
+            foreach(var v in result)
+            {
+                Console.WriteLine($"Победитель в блоке {v.Key} - {v.Value}");
+            }
             Console.ReadLine();
         }
        static void Print(Dictionary<int, string>[] blocksCandidates, int[][,] vote)
@@ -193,6 +198,51 @@ namespace Voting
                 // запись массива байтов в файл
                 fstream.Write(buffer, 0, buffer.Length);
             }
+        }
+
+        static Dictionary<int, string> CalculateVote(Dictionary<int, string>[] blocksCandidates, int[][,] vote)
+        {
+            Dictionary<int, string> winners = new Dictionary<int, string>();
+            for(int i = 0; i < blocksCandidates.Length; i++)
+            {
+                Dictionary<int, int> voteRating = new Dictionary<int, int>();
+                foreach(var candidates in blocksCandidates[i])
+                {
+                    voteRating.Add(candidates.Key, 0);
+                }
+                int k = 0;
+                List<int> strVote = new List<int>();
+                KeyValuePair<int, int> max = new KeyValuePair<int, int>();
+                while(true)
+                {
+                    if (k > blocksCandidates[i].Count)
+                        break;
+                    for (int j = 0; j < vote[i].GetLength(0); j++)
+                    {
+                        if (k > 0 && strVote.Contains(j))
+                            continue;
+                        if (k > 0 && voteRating.ContainsKey(vote[i][j, k-1]))
+                        {
+                            strVote.Add(j);
+                            continue;
+                        }
+                        var num = voteRating.FirstOrDefault(x => x.Key == vote[i][j, k]).Key;
+                        if(num != 0)
+                            voteRating[num]++;
+                    }
+                    max = voteRating.MaxBy(x => x.Value);
+                    if (max.Value >= vote[i].GetLength(0))
+                        break;
+                    if(voteRating.Count > 2)
+                    {
+                        var rate = voteRating.OrderByDescending(x => x.Value).ToDictionary(x => x.Key, x => x.Value);
+                        voteRating = rate.Take(rate.Count / 2).ToDictionary(x => x.Key, x => x.Value);
+                    }
+                    k++;
+                }
+                winners.Add(i+1, blocksCandidates[i].GetValueOrDefault(max.Key));
+            }
+            return winners;
         }
     }
 }
