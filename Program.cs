@@ -7,6 +7,36 @@ namespace Voting
     {
         static bool TryParseInputFile(string path, out Dictionary<int, string>[] blocksCandidates, out int[][,] vote)
         {
+            string _exampleDataInput = @"Пример корректного ввода данных:
+1
+
+4
+1 - Ashlynn Bogisich
+2 - Grace Keebler
+3 - Kristofer Hickle
+4 - Danielle Abernathy
+2 4 1 3
+3 2 1 4
+3 1 4 2
+4 1 3 2
+2 3 1 4
+1 2 4 3
+2 1 4 3
+
+2
+
+3
+1 - Deron Keebler
+2 - Gilda Feil
+3 - Okey Davis
+1 3 2
+2 1 3
+2 1 3
+3 1 2
+3 1 2
+
+";
+            int countGlobalLines = 0;
             string[] lines = File.ReadAllLines(path);
             List<string[]> candidatesPerBlock = new List<string[]>();
             List<int[,]> votesPerBlock = new List<int[,]>();
@@ -25,6 +55,7 @@ namespace Voting
                     {
                         countCandidatesPerBlock = int.Parse(blockHeader[2]);
                         countLines += 3;
+                        countGlobalLines += 3;
                         var blockCandidates = lines.Take(new Range(countLines, countLines + countCandidatesPerBlock)).ToArray();
                         string[] s = new string[blockCandidates.Length];
                         for (int i = 0; i < countCandidatesPerBlock; i++)
@@ -33,13 +64,14 @@ namespace Voting
                             {
                                 s[i] = blockCandidates[i];
                                 countLines++;
+                                countGlobalLines ++;
                             }
                             else
                             {
                                 if (Regex.IsMatch(blockCandidates[i], @"\d+\s\d+\s\d+$"))
-                                    Console.WriteLine("Не соответствует указанное число кандидатов фактическому");
+                                    Console.WriteLine($"Не соответствует указанное число кандидатов фактическому, смотри строку #{countGlobalLines+1}");
                                 else
-                                    Console.WriteLine("Неверный формат ввода кандидатов");
+                                    Console.WriteLine($"Неверный формат ввода кандидатов, смотри строку #{countGlobalLines+1}\n"+_exampleDataInput);
                                 blocksCandidates = null;
                                 vote = null;
                                 return false;
@@ -64,14 +96,15 @@ namespace Voting
                                     count++;
                                 }
                                 countLines++;
+                                countGlobalLines ++;
                                 lines = lines.TakeLast(lines.Length - countLines).ToArray();
                                 break;
                             }
                             if (Regex.IsMatch(blockVotes[i], @"\d+\s\d+\s\d+$"))
                             {
-                                if (blockVotes[i] == lines.Last())
+                                if (countLines == lines.GetLength(0)-1)
                                 {
-                                    Console.WriteLine("В конце каждого блока должна быть пустая строка");
+                                    Console.WriteLine($"В конце каждого блока должна быть пустая строка, смотри строку #{countGlobalLines+1}\n"+_exampleDataInput);
                                     blocksCandidates = null;
                                     vote = null;
                                     return false;
@@ -82,10 +115,11 @@ namespace Voting
                                 {
                                     srs?.Add(sv);
                                     countLines++;
+                                    countGlobalLines ++;
                                 }
                                 else
                                 {
-                                    Console.WriteLine("не соответствует количесто кандидатов и списка проголосовавшего");
+                                    Console.WriteLine($"не соответствует количесто кандидатов и списка проголосовавшего, смотри строку #{countGlobalLines+1}");
                                     blocksCandidates = null;
                                     vote = null;
                                     return false;
@@ -93,33 +127,47 @@ namespace Voting
                             }
                             else if (Regex.IsMatch(blockVotes[i], @"^\d+\s?-\s?\w+"))
                             {
-                                Console.WriteLine("Не соответствует указанное число кандидатов фактическому");
+                                Console.WriteLine($"Не соответствует указанное число кандидатов фактическому, смотри строку #{countGlobalLines+1}");
                                 blocksCandidates = null;
                                 vote = null;
                                 return false;
                             }
                             else if (Regex.IsMatch(blockVotes[i], @"^\d+$"))
                             {
-                                Console.WriteLine("В конце каждого блока должна быть пустая строка");
+                                Console.WriteLine($"В конце каждого блока должна быть пустая строка, смотри строку #{countGlobalLines+1}\n"+_exampleDataInput);
                                 blocksCandidates = null;
                                 vote = null;
                                 return false;
                             }
+                            else
+                            {
+                                Console.WriteLine($"Неверный формат ввода голосов, смотри строку #{countGlobalLines + 1}\n"+_exampleDataInput);
+                                blocksCandidates = null;
+                                vote = null;
+                                return false;
+                            } 
                         }
                         if (z != null)
                             votesPerBlock.Add(z);
                     }
                     else
                     {
-                        Console.WriteLine("Неверно введен номер блока");
+                        Console.WriteLine($"Неверно введен номер блока, смотри строку #{countGlobalLines+1}");
                         blocksCandidates = null;
                         vote = null;
                         return false;
                     }
                 }
+                else if (Regex.IsMatch(strHeader, @"\d+\s\d+\n"))
+                {
+                    Console.WriteLine($"Допущена лишняя пустая строка, смотри строку #{countGlobalLines + 1}\n"+_exampleDataInput);
+                    blocksCandidates = null;
+                    vote = null;
+                    return false;
+                }
                 else
                 {
-                    Console.WriteLine("Неверный формат заголовка");
+                    Console.WriteLine($"Неверный формат заголовка (номер блока и кол-во кандидатов), смотри строку #{countGlobalLines+1}\n"+_exampleDataInput);
                     blocksCandidates = null;
                     vote = null;
                     return false;
@@ -141,8 +189,9 @@ namespace Voting
             return true;
         }
         static void Main(string[] args)
-        { 
+        {
             //InputDataGenerate();
+            //bool b = TryParseInputFile(Path.Combine(args[0], out Dictionary<int, string>[] blocksCandidates, out int[][,] vote);
             bool b = TryParseInputFile(Path.Combine("c:", "Spark") + "\\TestVote.txt", out Dictionary<int, string>[] blocksCandidates, out int[][,] vote);
             //Print(blocksCandidates, vote);
             if (b)
@@ -185,7 +234,7 @@ namespace Voting
             for (int i = 0; i < blocks; i++)
             {
                 var candidatesCountPerBlock = RandomNumber.Next(3, 20);
-                var voteCountPerBlock = RandomNumber.Next(1, 1000);
+                var voteCountPerBlock = RandomNumber.Next(10, 1000);
                 var vote = new int[candidatesCountPerBlock];
                 randomVote[i] = new int[voteCountPerBlock, candidatesCountPerBlock];
                 blocksCandidates[i] = new Dictionary<int, string>(candidatesCountPerBlock);
