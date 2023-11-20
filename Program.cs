@@ -234,8 +234,8 @@ namespace Voting
         static void Main(string[] args)
         {
             //InputDataGenerate();
-            //bool b = TryParseInputFile(Path.Combine(args[0], out Dictionary<int, string>[] blocksCandidates, out int[][,] vote);
-            bool b = TryParseInputFile(Path.Combine("c:", "Spark") + "\\TestVote.txt", out Dictionary<int, string>[] blocksCandidates, out int[][,] vote);
+            bool b = TryParseInputFile(args[0], out Dictionary<int, string>[] blocksCandidates, out int[][,] vote);
+            //bool b = TryParseInputFile(Path.Combine("c:", "Spark") + "\\TestVote.txt", out Dictionary<int, string>[] blocksCandidates, out int[][,] vote);
             if (b)
             {
                 var result = CalculateVote(blocksCandidates, vote);
