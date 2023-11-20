@@ -5,7 +5,7 @@ namespace Voting
 {
     public class Program
     {
-        static void TryParseInputFile(string path, out Dictionary<int, string>[] blocksCandidates, out int[][,] vote)
+        static bool TryParseInputFile(string path, out Dictionary<int, string>[] blocksCandidates, out int[][,] vote)
         {
             string[] lines = File.ReadAllLines(path);
             List<string[]> candidatesPerBlock = new List<string[]>();
@@ -36,8 +36,13 @@ namespace Voting
                             }
                             else
                             {
-                                Console.WriteLine("Неверный формат ввода кандидатов");
-                                break;
+                                if (Regex.IsMatch(blockCandidates[i], @"\d+\s\d+\s\d+$"))
+                                    Console.WriteLine("Не соответствует указанное число кандидатов фактическому");
+                                else
+                                    Console.WriteLine("Неверный формат ввода кандидатов");
+                                blocksCandidates = null;
+                                vote = null;
+                                return false;
                             }
                         }
                         candidatesPerBlock.Add(s);
@@ -62,9 +67,16 @@ namespace Voting
                                 lines = lines.TakeLast(lines.Length - countLines).ToArray();
                                 break;
                             }
-                            if (Regex.IsMatch(blockVotes[i], @"\s\d+\s\d+\s$"))
+                            if (Regex.IsMatch(blockVotes[i], @"\d+\s\d+\s\d+$"))
                             {
-                                var bv = blockVotes[i].Substring(0, blockVotes[i].Length - 1);
+                                if (blockVotes[i] == lines.Last())
+                                {
+                                    Console.WriteLine("В конце каждого блока должна быть пустая строка");
+                                    blocksCandidates = null;
+                                    vote = null;
+                                    return false;
+                                }
+                                var bv = blockVotes[i].Substring(0, blockVotes[i].Length);
                                 var sv = bv.Split(' ').Select(x => int.Parse(x)).ToArray();
                                 if (sv.Length == countCandidatesPerBlock)
                                 {
@@ -74,18 +86,44 @@ namespace Voting
                                 else
                                 {
                                     Console.WriteLine("не соответствует количесто кандидатов и списка проголосовавшего");
-                                    break;
+                                    blocksCandidates = null;
+                                    vote = null;
+                                    return false;
                                 }
+                            }
+                            else if (Regex.IsMatch(blockVotes[i], @"^\d+\s?-\s?\w+"))
+                            {
+                                Console.WriteLine("Не соответствует указанное число кандидатов фактическому");
+                                blocksCandidates = null;
+                                vote = null;
+                                return false;
+                            }
+                            else if (Regex.IsMatch(blockVotes[i], @"^\d+$"))
+                            {
+                                Console.WriteLine("В конце каждого блока должна быть пустая строка");
+                                blocksCandidates = null;
+                                vote = null;
+                                return false;
                             }
                         }
                         if (z != null)
                             votesPerBlock.Add(z);
                     }
                     else
+                    {
                         Console.WriteLine("Неверно введен номер блока");
+                        blocksCandidates = null;
+                        vote = null;
+                        return false;
+                    }
                 }
                 else
+                {
                     Console.WriteLine("Неверный формат заголовка");
+                    blocksCandidates = null;
+                    vote = null;
+                    return false;
+                }
             }
             blocksCandidates = new Dictionary<int, string>[countBlocks];
             vote = votesPerBlock.ToArray();
@@ -100,16 +138,20 @@ namespace Voting
                 }
                 countt++;
             }
+            return true;
         }
         static void Main(string[] args)
         { 
             //InputDataGenerate();
-            TryParseInputFile(Path.Combine("c:", "Spark") + "\\TestVote.txt", out Dictionary<int, string>[] blocksCandidates, out int[][,] vote);
+            bool b = TryParseInputFile(Path.Combine("c:", "Spark") + "\\TestVote.txt", out Dictionary<int, string>[] blocksCandidates, out int[][,] vote);
             //Print(blocksCandidates, vote);
-            var result = CalculateVote(blocksCandidates, vote);
-            foreach(var v in result)
+            if (b)
             {
-                Console.WriteLine($"Победитель в блоке {v.Key} - {v.Value}");
+                var result = CalculateVote(blocksCandidates, vote);
+                foreach (var v in result)
+                {
+                    Console.WriteLine($"Победитель в блоке {v.Key} - {v.Value}");
+                }
             }
             Console.ReadLine();
         }
@@ -183,7 +225,10 @@ namespace Voting
                 {
                     for (int j = 0; j < randomVote[i].GetLength(1); j++)
                     {
-                        builder.Append($"{randomVote[i][k, j]} ");
+                        if (j == randomVote[i].GetLength(1)-1)
+                            builder.Append($"{randomVote[i][k, j]}");
+                        else
+                            builder.Append($"{randomVote[i][k, j]} ");
                     }
                     builder.Append("\n");
                 }
@@ -211,12 +256,14 @@ namespace Voting
                     voteRating.Add(candidates.Key, 0);
                 }
                 int k = 0;
+                string strWinner = String.Empty;
                 List<int> strVote = new List<int>();
                 KeyValuePair<int, int> max = new KeyValuePair<int, int>();
                 while(true)
                 {
                     if (k > blocksCandidates[i].Count)
                         break;
+                    StringBuilder strWinnerBuilder = new StringBuilder();
                     for (int j = 0; j < vote[i].GetLength(0); j++)
                     {
                         if (k > 0 && strVote.Contains(j))
@@ -231,16 +278,26 @@ namespace Voting
                             voteRating[num]++;
                     }
                     max = voteRating.MaxBy(x => x.Value);
-                    if (max.Value >= vote[i].GetLength(0))
-                        break;
-                    if(voteRating.Count > 2)
+                    var averageValue = voteRating.Average(x => x.Value);
+                    voteRating = voteRating.Where(x=>x.Value>=averageValue).ToDictionary(x => x.Key, x => x.Value);
+                    var countMax = voteRating.Where(x => x.Value == max.Value);
+                    if (countMax.Count() > 1)
                     {
-                        var rate = voteRating.OrderByDescending(x => x.Value).ToDictionary(x => x.Key, x => x.Value);
-                        voteRating = rate.Take(rate.Count / 2).ToDictionary(x => x.Key, x => x.Value);
+                        foreach (var t in countMax)
+                            strWinnerBuilder.Append(blocksCandidates[i].GetValueOrDefault(t.Key) + " ");
+                        strWinner = strWinnerBuilder.ToString();
+                    }
+                    else
+                    {
+                        strWinnerBuilder.Append(blocksCandidates[i].GetValueOrDefault(max.Key));
+                        strWinner = strWinnerBuilder.ToString();
+                        if (max.Value > vote[i].GetLength(0) / 2)
+                            break;
                     }
                     k++;
                 }
-                winners.Add(i+1, blocksCandidates[i].GetValueOrDefault(max.Key));
+                if(strWinner!=null)
+                    winners.Add(i+1, strWinner);
             }
             return winners;
         }
